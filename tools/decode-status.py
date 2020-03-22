@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
 """
-  decode-status.py - decode status for Sonoff-Tasmota
+  decode-status.py - decode status for Tasmota
 
-  Copyright (C) 2019 Theo Arends
+  Copyright (C) 2020  Theo Arends
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -53,7 +53,7 @@ a_on_off = ["OFF","ON "]
 a_setoption = [[
     "Save power state and use after restart",
     "Restrict button actions to single, double and hold",
-    "Show value units in JSON messages",
+    "(not used) Show value units in JSON messages",
     "MQTT enabled",
     "Respond as Command topic instead of RESULT",
     "MQTT retain on Power",
@@ -86,7 +86,7 @@ a_setoption = [[
     ],[
     "Key hold time (ms)",
     "Sonoff POW Max_Power_Retry",
-    "(not used) Tuya MCU device id",
+    "Backlog delay (ms)",
     "(not used) mDNS delayed start (Sec)",
     "Boot loop retry offset (0 = disable)",
     "RGBWW remap",
@@ -95,12 +95,12 @@ a_setoption = [[
     "Ignore hold time (s)",
     "(not used) Number of Tuya MCU relays",
     "Over temperature threshold (celsius)",
-    "Tuya MCU max dimmer value",
+    "(not used) Tuya MCU max dimmer value",
     "(not used) Tuya MCU voltage Id",
     "(not used) Tuya MCU current Id",
     "(not used) Tuya MCU power Id",
-    "Energy Tariff1 start hour",
-    "Energy Tariff2 start hour",
+    "(not used) Energy Tariff1 start hour",
+    "(not used) Energy Tariff2 start hour",
     "",
     ],[
     "Timers enabled",
@@ -118,18 +118,38 @@ a_setoption = [[
     "Do not use retain flag on HOLD messages",
     "Do not scan relay power state at restart",
     "Use _ instead of - as sensor index separator",
-    "(not used) Disable Dimmer slider control",
-    "Disable Dimmer range 255 slider control",
+    "Disable fast power cycle detection for device reset",
+    "Enable TuyaMcuReceived messages over Mqtt",
     "Enable buzzer when available",
     "Enable multi-channels PWM instead of Color PWM",
-    "Limits Tuya MCU dimmers to minimum of 10% (25) when enabled",
+    "(not used) Limits Tuya MCU dimmers to minimum of 10% (25) when enabled",
     "Enable Weekend Energy Tariff",
     "Select different Modbus registers for Active Energy",
-    "","",
-    "","","","",
-    "","",
+    "Enable hardware energy total counter as reference",
+    "Enable HTTP CORS",
+    "Enable internal pullup for single DS18x20 sensor",
+    "GroupTopic replaces %topic% (0) or fixed topic cmnd/grouptopic (1)",
+    "Enable incrementing bootcount when deepsleep is enabled",
+    "Do not power off if slider moved to far left",
+    "Bypass Compatibility check",
+    "Enable resetting of counters after telemetry was sent",
     "Enable shutter support",
     "Invert PCF8574 ports"
+    ],[
+    "Reduced CT range for Alexa",
+    "Use FriendlyNames instead of ShortAddresses when possible",
+    "(AWS IoT) publish MQTT state to a device shadow",
+    "Enable Device Groups",
+    "PWM Dimmer Turn brightness LED's off 5 seconds after last change",
+    "PWM Dimmer Turn red LED on when powered off",
+    "PWM Dimmer Buttons control remote devices",
+    "Distinct MQTT topics per device for Zigbee",
+    "","","","",
+    "","","","",
+    "","","","",
+    "","","","",
+    "","","","",
+    "","","",""
     ]]
 
 a_features = [[
@@ -170,8 +190,17 @@ a_features = [[
     "USE_MAX31865","USE_CHIRP","USE_SOLAX_X1","USE_PAJ7620"
     ],[
     "USE_BUZZER","USE_RDM6300","USE_IBEACON","USE_SML_M",
-    "USE_INA226","USE_A4988_Stepper","USE_DDS2382","USE_SM2135",
-    "USE_SHUTTER","USE_PCF8574","USE_DDSU666","",
+    "USE_INA226","USE_A4988_STEPPER","USE_DDS2382","USE_SM2135",
+    "USE_SHUTTER","USE_PCF8574","USE_DDSU666","USE_DEEPSLEEP",
+    "USE_SONOFF_SC","USE_SONOFF_RF","USE_SONOFF_L1","USE_EXS_DIMMER",
+    "USE_ARDUINO_SLAVE","USE_HIH6","USE_HPMA","USE_TSL2591",
+    "USE_DHT12","USE_DS1624","USE_GPS","USE_HOTPLUG",
+    "USE_NRF24","USE_MIBLE","USE_HM10","USE_LE01MR",
+    "USE_AHT1x","USE_WEMOS_MOTOR_V1","USE_DEVICE_GROUPS","USE_PWM_DIMMER"
+    ],[
+    "USE_KEELOQ","USE_HRXL","USE_SONOFF_D1","USE_HDC1080",
+    "","","","",
+    "","","","",
     "","","","",
     "","","","",
     "","","","",
@@ -210,7 +239,7 @@ else:
         obj = json.load(fp)
 
 def StartDecode():
-    print ("\n*** decode-status.py v20190819 by Theo Arends and Jacek Ziolkowski ***")
+    print ("\n*** decode-status.py v20200314 by Theo Arends and Jacek Ziolkowski ***")
 
 #    print("Decoding\n{}".format(obj))
 
@@ -245,7 +274,7 @@ def StartDecode():
                             options.append(str("{0:2d} ({1:3d}) {2}".format(i, split_register[opt_idx], option)))
                             i += 1
 
-                if r in (0, 2): #registers 1 and 3 hold binary values
+                if r in (0, 2, 3): #registers 1 and 3 hold binary values
                     for opt_idx, option in enumerate(opt_group):
                         i_register = int(register,16)
                         state = (i_register >> opt_idx) & 1
